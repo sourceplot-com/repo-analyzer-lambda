@@ -11,4 +11,3 @@ plugins {
 }
 
 rootProject.name = "github-data-extractor"
-include("app")
