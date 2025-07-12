@@ -1,5 +1,6 @@
 plugins {
     application
+    id("com.gradleup.shadow") version "8.3.0"
 }
 
 repositories {
@@ -26,22 +27,14 @@ dependencies {
     implementation(libs.aws.lambda.java.log4j2)
 }
 
+application {
+    mainClass.set("com.sourceplot.handler.RepositoryQueueHandler")
+}
+
 java {
     toolchain {
         languageVersion = JavaLanguageVersion.of(21)
     }
-}
-
-tasks.register<Jar>("fatJar") {
-    archiveFileName.set("github-data-extractor.jar")
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    
-    manifest {
-        attributes["Main-Class"] = "com.sourceplot.handler.RepositoryQueueHandler"
-    }
-    
-    from(configurations.runtimeClasspath.get().map { if (it.isDirectory) it else zipTree(it) })
-    with(tasks.jar.get() as CopySpec)
 }
 
 tasks.named<Test>("test") {
