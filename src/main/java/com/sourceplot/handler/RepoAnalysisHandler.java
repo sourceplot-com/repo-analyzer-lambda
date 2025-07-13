@@ -10,7 +10,7 @@ import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 import lombok.extern.log4j.Log4j2;
 
 @Log4j2
-public class RepositoryQueueHandler implements RequestHandler<SQSEvent, SQSBatchResponse> {
+public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchResponse> {
     @Override
     public SQSBatchResponse handleRequest(SQSEvent input, Context context) {
         var failures = new ArrayList<SQSBatchResponse.BatchItemFailure>();

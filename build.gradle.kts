@@ -28,7 +28,7 @@ dependencies {
 }
 
 application {
-    mainClass.set("com.sourceplot.handler.RepositoryQueueHandler")
+    mainClass.set("com.sourceplot.handler.RepoAnalysisHandler")
 }
 
 java {

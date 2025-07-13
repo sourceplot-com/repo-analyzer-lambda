@@ -10,4 +10,4 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
 }
 
-rootProject.name = "github-data-extractor"
+rootProject.name = "repo-analyzer-lambda"
