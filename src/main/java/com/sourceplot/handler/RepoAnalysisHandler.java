@@ -11,8 +11,12 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.sourceplot.accessor.RepoStatsAccessor;
+import com.sourceplot.init.AwsModule;
+import com.sourceplot.init.EnvironmentModule;
 import com.sourceplot.init.ServiceModule;
 import com.sourceplot.model.ActiveRepositoriesPayload;
+import com.sourceplot.model.RepoStats;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.SQSBatchResponse;
@@ -25,12 +29,13 @@ import static com.google.inject.Guice.createInjector;
 public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchResponse> {
     @Inject
     private ObjectMapper objectMapper;
-
     @Inject
     private HttpClient httpClient;
+    @Inject
+    private RepoStatsAccessor repoStatsAccessor;
 
     public RepoAnalysisHandler() {
-        Injector injector = createInjector(new ServiceModule());
+        Injector injector = createInjector(new ServiceModule(), new EnvironmentModule(), new AwsModule());
         injector.injectMembers(this);
     }
 
@@ -58,6 +63,14 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
             var languagesUri = URI.create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
             var languagesResponse = httpClient.send(HttpRequest.newBuilder().uri(languagesUri).build(), HttpResponse.BodyHandlers.ofString());
             log.info("Languages response: {}", languagesResponse.body());
+
+            repoStatsAccessor.saveRepoStats(
+                RepoStats.builder()
+                    .repo(repository.name())
+                    .date(payload.timestamp())
+                    .languageData(languagesResponse.body())
+                    .build()
+            );
         }
     }
 }

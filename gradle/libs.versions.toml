@@ -7,7 +7,7 @@ lombok = "1.18.34"
 immutables = "2.10.1"
 aws-lambda-java-core = "1.2.3"
 aws-lambda-java-events = "3.14.0"
-aws-java-sdk-dynamodb = "2.29.15"
+aws-java-sdk = "2.32.0"
 log4j2 = "2.24.1"
 aws-lambda-java-log4j2 = "1.6.0"
 jackson = "2.18.0"
@@ -19,7 +19,9 @@ lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 immutables-value = { module = "org.immutables:value", version.ref = "immutables" }
 aws-lambda-java-core = { module = "com.amazonaws:aws-lambda-java-core", version.ref = "aws-lambda-java-core" }
 aws-lambda-java-events = { module = "com.amazonaws:aws-lambda-java-events", version.ref = "aws-lambda-java-events" }
-aws-java-sdk-dynamodb = { module = "software.amazon.awssdk:dynamodb", version.ref = "aws-java-sdk-dynamodb" }
+aws-java-sdk-bom = { module = "software.amazon.awssdk:bom", version.ref = "aws-java-sdk" }
+aws-java-sdk-dynamodb = { module = "software.amazon.awssdk:dynamodb", version.ref = "aws-java-sdk" }
+aws-java-sdk-dynamodb-enhanced = { module = "software.amazon.awssdk:dynamodb-enhanced", version.ref = "aws-java-sdk" }
 log4j2-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j2" }
 log4j2-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j2" }
 log4j2-slf4j-impl = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j2" }
