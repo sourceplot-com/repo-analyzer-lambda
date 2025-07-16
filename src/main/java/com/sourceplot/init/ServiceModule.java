@@ -1,5 +1,7 @@
 package com.sourceplot.init;
 
+import java.net.http.HttpClient;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.google.inject.AbstractModule;
@@ -15,5 +17,10 @@ public class ServiceModule extends AbstractModule {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new Jdk8Module());
         return objectMapper;
+    }
+
+    @Provides
+    public HttpClient provideHttpClient() {
+        return HttpClient.newHttpClient();
     }
 }
