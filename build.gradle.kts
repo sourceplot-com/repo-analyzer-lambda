@@ -46,3 +46,7 @@ java {
 tasks.named<Test>("test") {
     useJUnitPlatform()
 }
+
+tasks.shadowJar {
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer::class.java)
+}
