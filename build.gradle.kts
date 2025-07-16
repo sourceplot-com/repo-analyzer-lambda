@@ -19,12 +19,16 @@ dependencies {
     annotationProcessor(libs.immutables.value)
     implementation(libs.aws.lambda.java.core)
     implementation(libs.aws.lambda.java.events)
+    implementation(libs.aws.lambda.java.log4j2)
     implementation(libs.aws.java.sdk.dynamodb)
-    implementation(libs.guava)
+    implementation(libs.guice)
+    implementation(libs.jackson.core)
+    implementation(libs.jackson.databind)
+    implementation(libs.jackson.annotations)
+    implementation(libs.jackson.datatype.jdk8)
     implementation(libs.log4j2.api)
     implementation(libs.log4j2.core)
     implementation(libs.log4j2.slf4j.impl)
-    implementation(libs.aws.lambda.java.log4j2)
 }
 
 application {
