@@ -21,7 +21,7 @@ import com.sourceplot.init.ServiceModule;
 import com.sourceplot.model.ActiveRepositoriesPayload;
 import com.sourceplot.model.RepoStats;
 
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
@@ -30,7 +30,7 @@ import com.amazonaws.services.lambda.runtime.events.SQSEvent;
 
 import static com.google.inject.Guice.createInjector;
 
-@Log4j2
+@Slf4j
 public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchResponse> {
     @Inject
     private ObjectMapper objectMapper;
