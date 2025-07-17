@@ -1,3 +1,5 @@
+import com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer
+
 plugins {
     application
     id("com.gradleup.shadow") version "8.3.0"
@@ -8,11 +10,7 @@ repositories {
 }
 
 dependencies {
-    testCompileOnly(libs.lombok)
-    testAnnotationProcessor(libs.lombok)
-    testImplementation(libs.junit.jupiter)
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    
+    // dependencies
     compileOnly(libs.lombok)
     compileOnly(libs.immutables.value)
     annotationProcessor(libs.lombok)
@@ -31,6 +29,12 @@ dependencies {
     implementation(libs.log4j2.api)
     implementation(libs.log4j2.core)
     implementation(libs.log4j2.slf4j.impl)
+
+    // test dependenices
+    testCompileOnly(libs.lombok)
+    testAnnotationProcessor(libs.lombok)
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }
 
 application {
@@ -48,5 +52,5 @@ tasks.named<Test>("test") {
 }
 
 tasks.shadowJar {
-    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer::class.java)
+    transform(Log4j2PluginsCacheFileTransformer::class.java)
 }
