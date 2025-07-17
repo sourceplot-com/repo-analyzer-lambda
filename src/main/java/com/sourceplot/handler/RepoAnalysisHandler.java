@@ -60,7 +60,7 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
                 try {
                     processMessage(message);
                 } catch (Exception e) {
-                    log.error("Error processing message: {}", e.getMessage());
+                    log.error("Error processing message", e);
                     failures.add(new SQSBatchResponse.BatchItemFailure(message.getMessageId()));
                 } finally {
                     latch.countDown();
@@ -85,7 +85,14 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
 
         for (var repository : payload.repositories()) {
             var languagesUri = URI.create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
-            var languagesResponse = httpClient.send(HttpRequest.newBuilder().uri(languagesUri).build(), HttpResponse.BodyHandlers.ofString());
+            var languagesResponse = httpClient.send(
+                HttpRequest.newBuilder()
+                    .uri(languagesUri)
+                    .header("Accept", "application/json" )
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .build(),
+                HttpResponse.BodyHandlers.ofString()
+            );
             log.info("Languages response: {}", languagesResponse.body());
 
             repoStatsAccessor.saveRepoStats(
