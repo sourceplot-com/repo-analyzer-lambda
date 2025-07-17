@@ -6,6 +6,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -42,7 +43,7 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
     private ExecutorService executorService;
 
     public RepoAnalysisHandler() {
-        Injector injector = createInjector(new ServiceModule(), new EnvironmentModule(), new AwsModule());
+        var injector = createInjector(new ServiceModule(), new EnvironmentModule(), new AwsModule());
         injector.injectMembers(this);
     }
 
@@ -88,42 +89,39 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
         var payload = objectMapper.readValue(message.getBody(), ActiveRepositoriesPayload.class);
         log.info("Processing payload at timestamp {} with {} repositories", payload.timestamp(), payload.repositories().size());
 
-        var repositoriesBeingProcessed = new CountDownLatch(payload.repositories().size());
+        var futures = new ArrayList<CompletableFuture<Void>>();
+
         for (var repository : payload.repositories()) {
-            var languagesUri = URI.create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
+            var languagesUri = URI .create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
             var request = HttpRequest.newBuilder()
-                .uri(languagesUri)
-                .header("Accept", "application/json" )
-                .version(HttpClient.Version.HTTP_1_1)
-                .build();
+                    .uri(languagesUri)
+                    .header("Accept", "application/json")
+                    .version(HttpClient.Version.HTTP_1_1)
+                    .build();
 
-            var languagesResponse = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
-            languagesResponse.thenAccept(response -> {
-                log.info("Languages response: {}", response.body());
-                try {
-                    repoStatsAccessor.saveRepoStats(
-                        RepoStats.builder()
-                            .repo(repository.name())
-                            .date(payload.timestamp())
-                            .languageData(response.body())
-                            .build()
-                    );
-                } catch (Exception e) {
-                    log.error("Error saving repo stats", e);
-                } finally {
-                    repositoriesBeingProcessed.countDown();
-                }
-            });
+            var future = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenAccept(response -> {
+                    var repoStats = RepoStats.builder()
+                        .repo(repository.name())
+                        .date(payload.timestamp())
+                        .languageData(response.body())
+                        .build();
+
+                    log.info("Saving repo stats: {}", repoStats);
+
+                    try {
+                        repoStatsAccessor.saveRepoStats(repoStats);
+                    } catch (Exception e) {
+                        log.error("Error saving repo stats", e);
+                    }
+                });
+
+            futures.add(future);
         }
 
-        try {
-            log.info("Waiting for all repositories to be processed");
-            repositoriesBeingProcessed.await();
+        log.info("Waiting for all language data requests to complete");
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
 
-            log.info("All repositories processed");
-        } catch (InterruptedException e) {
-            log.error("Fatal error waiting for latch to count down", e);
-        }
+        log.info("All repositories processed");
     }
 }
-
