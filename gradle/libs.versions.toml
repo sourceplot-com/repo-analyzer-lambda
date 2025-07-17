@@ -2,6 +2,7 @@
 # https://docs.gradle.org/current/userguide/platforms.html#sub::toml-dependencies-format
 
 [versions]
+aspectj = "1.9.24"
 aws-lambda-java-core = "1.2.3"
 aws-lambda-java-events = "3.15.0"
 aws-lambda-java-log4j2 = "1.6.0"
@@ -12,8 +13,11 @@ jackson = "2.18.3"
 junit-jupiter = "5.13.3"
 log4j2 = "2.24.3"
 lombok = "1.18.30"
+powertools = "2.2.0"
+slf4j = "2.0.17"
 
 [libraries]
+aspectj-aspectjrt = { module = "org.aspectj:aspectjrt", version.ref = "aspectj" }
 aws-lambda-java-core = { module = "com.amazonaws:aws-lambda-java-core", version.ref = "aws-lambda-java-core" }
 aws-lambda-java-events = { module = "com.amazonaws:aws-lambda-java-events", version.ref = "aws-lambda-java-events" }
 aws-lambda-java-log4j2 = { module = "com.amazonaws:aws-lambda-java-log4j2", version.ref = "aws-lambda-java-log4j2" }
@@ -29,5 +33,10 @@ jackson-datatype-jdk8 = { module = "com.fasterxml.jackson.datatype:jackson-datat
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit-jupiter" }
 log4j2-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j2" }
 log4j2-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j2" }
-log4j2-slf4j-impl = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j2" }
+log4j2-slf4j2-impl = { module = "org.apache.logging.log4j:log4j-slf4j2-impl", version.ref = "log4j2" }
+log4j2-layout-template-json = { module = "org.apache.logging.log4j:log4j-layout-template-json", version.ref = "log4j2" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+slf4j-api = { module = "org.slf4j:slf4j-api", version.ref = "slf4j" }
+powertools-logging = { module = "software.amazon.lambda:powertools-logging", version.ref = "powertools" }
+powertools-tracing = { module = "software.amazon.lambda:powertools-tracing", version.ref = "powertools" }
+powertools-metrics = { module = "software.amazon.lambda:powertools-metrics", version.ref = "powertools" }

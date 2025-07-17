@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
-import com.google.inject.Injector;
 import com.sourceplot.accessor.RepoStatsAccessor;
 import com.sourceplot.init.AwsModule;
 import com.sourceplot.init.EnvironmentModule;
