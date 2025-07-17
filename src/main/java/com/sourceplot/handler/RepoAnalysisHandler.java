@@ -6,6 +6,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.util.ArrayList;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,6 +38,8 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
     private HttpClient httpClient;
     @Inject
     private RepoStatsAccessor repoStatsAccessor;
+    @Inject
+    private ExecutorService executorService;
 
     public RepoAnalysisHandler() {
         Injector injector = createInjector(new ServiceModule(), new EnvironmentModule(), new AwsModule());
@@ -47,15 +52,28 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
 
         var failures = new ArrayList<SQSBatchResponse.BatchItemFailure>();
 
+        var latch = new CountDownLatch(input.getRecords().size());
         for (SQSEvent.SQSMessage message : input.getRecords()) {
             log.info("Processing message: {}", message.getMessageId());
 
-            try {
-                processMessage(message);
-            } catch (Exception e) {
-                log.error("Error processing message: {}", e.getMessage());
-                failures.add(new SQSBatchResponse.BatchItemFailure(message.getMessageId()));
-            }
+            executorService.execute(() -> {
+                try {
+                    processMessage(message);
+                } catch (Exception e) {
+                    log.error("Error processing message: {}", e.getMessage());
+                    failures.add(new SQSBatchResponse.BatchItemFailure(message.getMessageId()));
+                } finally {
+                    latch.countDown();
+                }
+            });
+        }
+
+        try {
+            latch.await();
+            executorService.shutdown();
+            executorService.awaitTermination(1, TimeUnit.MINUTES);
+        } catch (InterruptedException e) {
+            log.error("Fatal error waiting for executor service to terminate", e);
         }
 
         return new SQSBatchResponse(failures);

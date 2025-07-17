@@ -1,6 +1,8 @@
 package com.sourceplot.init;
 
 import java.net.http.HttpClient;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
@@ -22,5 +24,10 @@ public class ServiceModule extends AbstractModule {
     @Provides
     public HttpClient provideHttpClient() {
         return HttpClient.newHttpClient();
+    }
+
+    @Provides
+    public ExecutorService provideExecutorService() {
+        return Executors.newFixedThreadPool(50);
     }
 }
