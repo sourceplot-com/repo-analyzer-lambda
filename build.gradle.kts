@@ -30,7 +30,6 @@ dependencies {
     implementation(libs.jackson.datatype.jdk8)
     implementation(libs.log4j2.api)
     implementation(libs.log4j2.core)
-    implementation(libs.log4j2.slf4j.impl)
 }
 
 application {

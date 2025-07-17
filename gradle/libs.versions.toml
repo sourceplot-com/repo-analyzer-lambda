@@ -24,7 +24,6 @@ aws-java-sdk-dynamodb = { module = "software.amazon.awssdk:dynamodb", version.re
 aws-java-sdk-dynamodb-enhanced = { module = "software.amazon.awssdk:dynamodb-enhanced", version.ref = "aws-java-sdk" }
 log4j2-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j2" }
 log4j2-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j2" }
-log4j2-slf4j-impl = { module = "org.apache.logging.log4j:log4j-slf4j-impl", version.ref = "log4j2" }
 aws-lambda-java-log4j2 = { module = "com.amazonaws:aws-lambda-java-log4j2", version.ref = "aws-lambda-java-log4j2" }
 jackson-core = { module = "com.fasterxml.jackson.core:jackson-core", version.ref = "jackson" }
 jackson-databind = { module = "com.fasterxml.jackson.core:jackson-databind", version.ref = "jackson" }

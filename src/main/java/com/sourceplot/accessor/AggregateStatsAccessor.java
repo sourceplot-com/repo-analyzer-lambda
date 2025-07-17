@@ -3,7 +3,7 @@ package com.sourceplot.accessor;
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
 import com.sourceplot.model.AggregateStats;
-import lombok.extern.slf4j.Slf4j;
+import lombok.extern.log4j.Log4j2;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.Key;
@@ -12,7 +12,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 
-@Slf4j
+@Log4j2
 @Singleton
 public class AggregateStatsAccessor {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
