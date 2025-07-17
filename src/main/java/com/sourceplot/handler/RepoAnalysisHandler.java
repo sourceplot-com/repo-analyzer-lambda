@@ -81,7 +81,7 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
 
     private void processMessage(SQSEvent.SQSMessage message) throws InterruptedException, IOException, JsonProcessingException {
         var payload = objectMapper.readValue(message.getBody(), ActiveRepositoriesPayload.class);
-        log.info("Processing payload: {}", payload);
+        log.info("Processing payload at timestamp {} with {} repositories", payload.timestamp(), payload.repositories().size());
 
         for (var repository : payload.repositories()) {
             var languagesUri = URI.create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
