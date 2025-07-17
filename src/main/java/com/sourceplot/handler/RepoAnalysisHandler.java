@@ -52,7 +52,7 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
 
         var failures = new ArrayList<SQSBatchResponse.BatchItemFailure>();
 
-        var latch = new CountDownLatch(input.getRecords().size());
+        var messagesBeingProcessed = new CountDownLatch(input.getRecords().size());
         for (SQSEvent.SQSMessage message : input.getRecords()) {
             log.info("Processing message: {}", message.getMessageId());
 
@@ -63,15 +63,20 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
                     log.error("Error processing message", e);
                     failures.add(new SQSBatchResponse.BatchItemFailure(message.getMessageId()));
                 } finally {
-                    latch.countDown();
+                    messagesBeingProcessed.countDown();
                 }
             });
         }
 
         try {
-            latch.await();
+            log.info("Waiting for all remaining messages to be processed");
+            messagesBeingProcessed.await();
+
+            log.info("All messages processed, shutting down executor service");
             executorService.shutdown();
             executorService.awaitTermination(1, TimeUnit.MINUTES);
+
+            log.info("Executor service successfully shut down");
         } catch (InterruptedException e) {
             log.error("Fatal error waiting for executor service to terminate", e);
         }
@@ -83,25 +88,41 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
         var payload = objectMapper.readValue(message.getBody(), ActiveRepositoriesPayload.class);
         log.info("Processing payload at timestamp {} with {} repositories", payload.timestamp(), payload.repositories().size());
 
+        var repositoriesBeingProcessed = new CountDownLatch(payload.repositories().size());
         for (var repository : payload.repositories()) {
             var languagesUri = URI.create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
-            var languagesResponse = httpClient.send(
-                HttpRequest.newBuilder()
-                    .uri(languagesUri)
-                    .header("Accept", "application/json" )
-                    .version(HttpClient.Version.HTTP_1_1)
-                    .build(),
-                HttpResponse.BodyHandlers.ofString()
-            );
-            log.info("Languages response: {}", languagesResponse.body());
+            var request = HttpRequest.newBuilder()
+                .uri(languagesUri)
+                .header("Accept", "application/json" )
+                .version(HttpClient.Version.HTTP_1_1)
+                .build();
 
-            repoStatsAccessor.saveRepoStats(
-                RepoStats.builder()
-                    .repo(repository.name())
-                    .date(payload.timestamp())
-                    .languageData(languagesResponse.body())
-                    .build()
-            );
+            var languagesResponse = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString());
+            languagesResponse.thenAccept(response -> {
+                log.info("Languages response: {}", response.body());
+                try {
+                    repoStatsAccessor.saveRepoStats(
+                        RepoStats.builder()
+                            .repo(repository.name())
+                            .date(payload.timestamp())
+                            .languageData(response.body())
+                            .build()
+                    );
+                } catch (Exception e) {
+                    log.error("Error saving repo stats", e);
+                } finally {
+                    repositoriesBeingProcessed.countDown();
+                }
+            });
+        }
+
+        try {
+            log.info("Waiting for all repositories to be processed");
+            repositoriesBeingProcessed.await();
+
+            log.info("All repositories processed");
+        } catch (InterruptedException e) {
+            log.error("Fatal error waiting for latch to count down", e);
         }
     }
 }
