@@ -25,6 +25,9 @@ import lombok.extern.slf4j.Slf4j;
 import software.amazon.lambda.powertools.logging.Logging;
 import software.amazon.lambda.powertools.tracing.Tracing;
 import software.amazon.lambda.powertools.metrics.FlushMetrics;
+import software.amazon.lambda.powertools.metrics.Metrics;
+import software.amazon.lambda.powertools.metrics.MetricsFactory;
+import software.amazon.lambda.powertools.metrics.model.MetricUnit;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
@@ -35,6 +38,8 @@ import static com.google.inject.Guice.createInjector;
 
 @Slf4j
 public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchResponse> {
+    private static final Metrics METRICS = MetricsFactory.getMetricsInstance();
+
     @Inject
     private ObjectMapper objectMapper;
     @Inject
@@ -52,9 +57,12 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
     @Override
     @Logging
     @Tracing
-    @FlushMetrics(namespace = "repo-analysis", service = "RepoAnalysisHandler")
+    @FlushMetrics(captureColdStart = true)
     public SQSBatchResponse handleRequest(SQSEvent input, Context context) {
         log.info("Received request with {} messages", input.getRecords().size());
+        METRICS.addMetric("InputMessages", input.getRecords().size(), MetricUnit.COUNT);
+
+        var start = System.currentTimeMillis();
 
         var failures = new ArrayList<SQSBatchResponse.BatchItemFailure>();
 
@@ -75,7 +83,7 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
         }
 
         try {
-            log.info("Waiting for all remaining messages to be processed");
+            log.info("Waiting for all {} remaining messages to be processed", messagesBeingProcessed.getCount());
             messagesBeingProcessed.await();
 
             log.info("All messages processed, shutting down executor service");
@@ -87,10 +95,15 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
             log.error("Fatal error waiting for executor service to terminate", e);
         }
 
+        var end = System.currentTimeMillis();
+        METRICS.addMetric("TotalProcessingTime", end - start, MetricUnit.MILLISECONDS);
+
         return new SQSBatchResponse(failures);
     }
 
     private void processMessage(SQSEvent.SQSMessage message) throws InterruptedException, IOException, JsonProcessingException {
+        var start = System.currentTimeMillis();
+
         var payload = objectMapper.readValue(message.getBody(), ActiveRepositoriesPayload.class);
         log.info("Processing payload at timestamp {} with {} repositories", payload.timestamp(), payload.repositories().size());
 
@@ -124,9 +137,12 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
             futures.add(future);
         }
 
-        log.info("Waiting for all language data requests to complete");
+        log.info("Waiting for all {} language data requests to complete", futures.size());
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
 
         log.info("All repositories processed");
+
+        var end = System.currentTimeMillis();
+        METRICS.addMetric("MessageProcessingTime", end - start, MetricUnit.MILLISECONDS);
     }
 }
