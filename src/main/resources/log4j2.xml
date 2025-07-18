@@ -8,7 +8,7 @@
             </LambdaTextFormat>
 
             <LambdaJSONFormat>
-                <JsonTemplateLayout eventTemplateUri="classpath:LambdaJsonLayout.json" />
+                <JsonTemplateLayout eventTemplateUri="classpath:LambdaLayout.json" />
             </LambdaJSONFormat>
         </Lambda>
     </Appenders>
