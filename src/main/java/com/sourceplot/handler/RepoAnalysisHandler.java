@@ -22,6 +22,9 @@ import com.sourceplot.model.ActiveRepositoriesPayload;
 import com.sourceplot.model.RepoStats;
 
 import lombok.extern.slf4j.Slf4j;
+import software.amazon.lambda.powertools.logging.Logging;
+import software.amazon.lambda.powertools.tracing.Tracing;
+import software.amazon.lambda.powertools.metrics.FlushMetrics;
 
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
@@ -47,6 +50,9 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
     }
 
     @Override
+    @Logging
+    @Tracing
+    @FlushMetrics(namespace = "repo-analysis", service = "RepoAnalysisHandler")
     public SQSBatchResponse handleRequest(SQSEvent input, Context context) {
         log.info("Received request with {} messages", input.getRecords().size());
 
