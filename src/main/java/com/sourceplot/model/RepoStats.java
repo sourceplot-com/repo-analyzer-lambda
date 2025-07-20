@@ -1,5 +1,7 @@
 package com.sourceplot.model;
 
+import java.util.Map;
+
 import lombok.Data;
 import lombok.Builder;
 import lombok.NoArgsConstructor;
@@ -18,8 +20,8 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecon
 @DynamoDbBean
 public class RepoStats {
     private String repo;
-    private String date;
-    private String languageData;
+    private String dateHour;
+    private Map<String, Integer> bytesByLanguage;
     
     @DynamoDbPartitionKey
     @DynamoDbAttribute("repo")
@@ -29,14 +31,14 @@ public class RepoStats {
     
     @DynamoDbSortKey
     @DynamoDbAttribute("date")
-    public String getDate() {
-        return date;
+    public String getDateHour() {
+        return dateHour;
     }
     
     @DynamoDbSecondaryPartitionKey(indexNames = "DateIndex")
     @DynamoDbAttribute("date")
     public String getDateForIndex() {
-        return date;
+        return dateHour;
     }
     
     @DynamoDbSecondarySortKey(indexNames = "DateIndex")
@@ -46,7 +48,7 @@ public class RepoStats {
     }
 
     @DynamoDbAttribute("languageData")
-    public String getLanguageData() {
-        return languageData;
+    public Map<String, Integer> getBytesByLanguage() {
+        return bytesByLanguage;
     }
 } 

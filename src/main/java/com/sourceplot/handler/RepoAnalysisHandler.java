@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -15,6 +16,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.inject.Inject;
 import com.sourceplot.accessor.RepoStatsAccessor;
+import com.sourceplot.external.github.LanguageDataParser;
 import com.sourceplot.init.AwsModule;
 import com.sourceplot.init.EnvironmentModule;
 import com.sourceplot.init.ServiceModule;
@@ -38,7 +40,7 @@ import static com.google.inject.Guice.createInjector;
 
 @Slf4j
 public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchResponse> {
-    private static final Metrics METRICS = MetricsFactory.getMetricsInstance();
+    private static final Metrics metrics = MetricsFactory.getMetricsInstance();
 
     @Inject
     private ObjectMapper objectMapper;
@@ -46,6 +48,8 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
     private HttpClient httpClient;
     @Inject
     private RepoStatsAccessor repoStatsAccessor;
+    @Inject
+    private LanguageDataParser languageDataParser;
     @Inject
     private ExecutorService executorService;
 
@@ -60,7 +64,7 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
     @FlushMetrics(captureColdStart = true)
     public SQSBatchResponse handleRequest(SQSEvent input, Context context) {
         log.info("Received request with {} messages", input.getRecords().size());
-        METRICS.addMetric("InputMessages", input.getRecords().size(), MetricUnit.COUNT);
+        metrics.addMetric("InputMessages", input.getRecords().size(), MetricUnit.COUNT);
 
         var start = System.currentTimeMillis();
 
@@ -96,7 +100,7 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
         }
 
         var end = System.currentTimeMillis();
-        METRICS.addMetric("TotalProcessingTime", end - start, MetricUnit.MILLISECONDS);
+        metrics.addMetric("TotalProcessingTime", end - start, MetricUnit.MILLISECONDS);
 
         return new SQSBatchResponse(failures);
     }
@@ -110,7 +114,7 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
         var futures = new ArrayList<CompletableFuture<Void>>();
 
         for (var repository : payload.repositories()) {
-            var languagesUri = URI .create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
+            var languagesUri = URI.create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
             var request = HttpRequest.newBuilder()
                     .uri(languagesUri)
                     .header("Accept", "application/json")
@@ -119,18 +123,23 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
 
             var future = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> {
-                    var repoStats = RepoStats.builder()
-                        .repo(repository.name())
-                        .date(payload.timestamp())
-                        .languageData(response.body())
-                        .build();
-
-                    log.info("Saving repo stats: {}", repoStats);
-
                     try {
+                        var bytesByLanguage = languageDataParser.parse(response.body());
+
+                        var repoStats = RepoStats.builder()
+                            .repo(repository.name())
+                            .dateHour(RepoStatsAccessor.DATE_HOUR_FORMATTER.format(Instant.parse(payload.timestamp())))
+                            .bytesByLanguage(bytesByLanguage)
+                            .build();
+
+                        log.info("Saving repo stats: {}", repoStats);
                         repoStatsAccessor.saveRepoStats(repoStats);
-                    } catch (Exception e) {
-                        log.error("Error saving repo stats", e);
+                    }
+                    catch (JsonProcessingException e) {
+                        log.error("Error parsing language data", e);
+                    }
+                    catch (Exception e) {
+                        log.error("Error handling language data response", e);
                     }
                 });
 
@@ -143,6 +152,6 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
         log.info("All repositories processed");
 
         var end = System.currentTimeMillis();
-        METRICS.addMetric("MessageProcessingTime", end - start, MetricUnit.MILLISECONDS);
+        metrics.addMetric("MessageProcessingTime", end - start, MetricUnit.MILLISECONDS);
     }
 }

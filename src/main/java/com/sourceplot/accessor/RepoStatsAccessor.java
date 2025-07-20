@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Singleton
 public class RepoStatsAccessor {
-    private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    public static final DateTimeFormatter DATE_HOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH");
     
     private final DynamoDbEnhancedClient enhancedClient;
     private final DynamoDbTable<RepoStats> repoStatsTable;
@@ -41,20 +41,20 @@ public class RepoStatsAccessor {
         log.info("Successfully saved repo stats for {}", repoStats.getRepo());
     }
     
-    public Optional<RepoStats> getRepoStats(String repoName, String date) {
-        log.info("Retrieving repo stats for repo: {} on date: {}", repoName, date);
+    public Optional<RepoStats> getRepoStats(String repoName, String dateHour) {
+        log.info("Retrieving repo stats for repo: {} on datehour: {}", repoName, dateHour);
         
         return Optional.ofNullable(
             repoStatsTable.getItem(Key.builder()
                 .partitionValue(repoName)
-                .sortValue(date)
+                .sortValue(dateHour)
                 .build()
             )
         );
     }
     
     public Optional<RepoStats> getRepoStats(String repoName, LocalDate date) {
-        return getRepoStats(repoName, date.format(DATE_FORMATTER));
+        return getRepoStats(repoName, date.format(DATE_HOUR_FORMATTER));
     }
     
     public void batchSaveRepoStats(List<RepoStats> repoStatsList) {
