@@ -47,7 +47,7 @@ public class RepoStats {
         return repo;
     }
 
-    @DynamoDbAttribute("languageData")
+    @DynamoDbAttribute("bytesByLanguage")
     public Map<String, Integer> getBytesByLanguage() {
         return bytesByLanguage;
     }

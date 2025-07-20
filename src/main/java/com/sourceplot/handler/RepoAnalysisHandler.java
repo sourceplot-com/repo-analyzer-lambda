@@ -6,11 +6,11 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.TimeUnit;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -106,8 +106,9 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
         var payload = objectMapper.readValue(message.getBody(), ActiveRepositoriesPayload.class);
         log.info("Processing payload at timestamp {} with {} repositories", payload.timestamp(), payload.repositories().size());
 
-        var futures = new ArrayList<CompletableFuture<Void>>();
+        var allRepoStats = new ArrayList<RepoStats>(payload.repositories().size());
 
+        var futures = new ArrayList<CompletableFuture<Void>>();
         for (var repository : payload.repositories()) {
             var languagesUri = URI.create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
             var request = HttpRequest.newBuilder()
@@ -120,16 +121,13 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
                 .thenAccept(response -> {
                     try {
                         var bytesByLanguage = languageDataParser.parse(response.body());
-                        log.info("Parsed language data for repository {}: {}", repository.name(), bytesByLanguage);
-
                         var repoStats = RepoStats.builder()
                             .repo(repository.name())
-                            .dateHour(RepoStatsAccessor.DATE_HOUR_FORMATTER.format(Instant.parse(payload.timestamp())))
+                            .dateHour(RepoStatsAccessor.DATE_HOUR_FORMATTER.format(Instant.parse(payload.timestamp()).atZone(ZoneOffset.UTC)))
                             .bytesByLanguage(bytesByLanguage)
                             .build();
 
-                        log.info("Saving repo stats: {}", repoStats);
-                        repoStatsAccessor.saveRepoStats(repoStats);
+                        allRepoStats.add(repoStats);
                     }
                     catch (JsonProcessingException e) {
                         log.error("Error parsing language data", e);
@@ -145,7 +143,9 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
         log.info("Waiting for all {} language data requests to complete", futures.size());
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
 
-        log.info("All repositories processed");
+        log.info("All repositories processed, now saving repo stats objects in batch");
+        repoStatsAccessor.batchSaveRepoStats(allRepoStats);
+        log.info("Successfully saved all repo stats items");
 
         var end = System.currentTimeMillis();
         metrics.addMetric("MessageProcessingTime", end - start, MetricUnit.MILLISECONDS);

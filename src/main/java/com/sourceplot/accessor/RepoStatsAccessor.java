@@ -12,9 +12,9 @@ import software.amazon.awssdk.enhanced.dynamodb.model.*;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Singleton
@@ -62,23 +62,31 @@ public class RepoStatsAccessor {
             log.debug("No repo stats to batch save");
             return;
         }
-        
-        log.info("Batch saving {} repo stats items", repoStatsList.size());
-        
-        List<WriteBatch> writeBatches = repoStatsList.stream()
-            .map(repoStats -> WriteBatch.builder(RepoStats.class)
-                .mappedTableResource(repoStatsTable)
-                .addPutItem(repoStats)
-                .build()
-            )
-            .collect(Collectors.toList());
-        
+
+        final int batchSize = 25;
+        List<WriteBatch> batchWrites = new ArrayList<>(repoStatsList.size() / batchSize);
+
+        for (int i = 0; i < repoStatsList.size(); i += batchSize) {
+            var chunk = repoStatsList.subList(i, Math.min(i + batchSize, repoStatsList.size()));
+            batchWrites.add(writeBatchWithLimit(chunk));
+        }
+
+        log.info("Batch saving {} repo stats items containing <= {} items", repoStatsList.size(), batchSize);
         enhancedClient.batchWriteItem(
             BatchWriteItemEnhancedRequest.builder()
-                .writeBatches(writeBatches)
+                .writeBatches(batchWrites)
                 .build()
         );
+    }
 
-        log.info("Successfully batch saved {} repo stats items", repoStatsList.size());
+    private WriteBatch writeBatchWithLimit(List<RepoStats> repoStatsList) {
+        var builder = WriteBatch.builder(RepoStats.class)
+            .mappedTableResource(repoStatsTable);
+
+        for (var repoStats : repoStatsList) {
+            builder.addPutItem(repoStats);
+        }
+
+        return builder.build();
     }
 }
