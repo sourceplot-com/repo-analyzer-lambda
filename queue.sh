@@ -10,7 +10,7 @@ fi
 
 REPO_NAME="$1"
 
-TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%S.%3NZ")
+TIMESTAMP=$(gdate -u +"%Y-%m-%dT%H:%M:%S%:z")
 MESSAGE_BODY=$(cat <<EOF
 {
     "timestamp": "$TIMESTAMP",

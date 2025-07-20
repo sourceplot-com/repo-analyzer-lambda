@@ -89,14 +89,9 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
         try {
             log.info("Waiting for all {} remaining messages to be processed", messagesBeingProcessed.getCount());
             messagesBeingProcessed.await();
-
-            log.info("All messages processed, shutting down executor service");
-            executorService.shutdown();
-            executorService.awaitTermination(1, TimeUnit.MINUTES);
-
-            log.info("Executor service successfully shut down");
+            log.info("All messages processed");
         } catch (InterruptedException e) {
-            log.error("Fatal error waiting for executor service to terminate", e);
+            log.error("Fatal error waiting for messages to be processed", e);
         }
 
         var end = System.currentTimeMillis();
@@ -125,6 +120,7 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
                 .thenAccept(response -> {
                     try {
                         var bytesByLanguage = languageDataParser.parse(response.body());
+                        log.info("Parsed language data for repository {}: {}", repository.name(), bytesByLanguage);
 
                         var repoStats = RepoStats.builder()
                             .repo(repository.name())
