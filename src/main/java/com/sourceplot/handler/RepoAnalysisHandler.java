@@ -5,6 +5,7 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.util.ArrayList;
@@ -76,12 +77,17 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
 
             executorService.execute(() -> {
                 try {
+                    log.info("Started processing message {} on thread {}", message.getMessageId(), Thread.currentThread().getName());
                     processMessage(message);
+                    log.info("Completed processing message {}", message.getMessageId());
                 } catch (Exception e) {
-                    log.error("Error processing message", e);
-                    failures.add(new SQSBatchResponse.BatchItemFailure(message.getMessageId()));
+                    log.error("Error processing message {}: {}", message.getMessageId(), e.getMessage(), e);
+                    synchronized (failures) {
+                        failures.add(new SQSBatchResponse.BatchItemFailure(message.getMessageId()));
+                    }
                 } finally {
                     messagesBeingProcessed.countDown();
+                    log.debug("Count down latch for message {}, remaining: {}", message.getMessageId(), messagesBeingProcessed.getCount());
                 }
             });
         }
@@ -103,23 +109,43 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
     private void processMessage(SQSEvent.SQSMessage message) throws InterruptedException, IOException, JsonProcessingException {
         var start = System.currentTimeMillis();
 
+        log.debug("Raw message body: {}", message.getBody());
         var payload = objectMapper.readValue(message.getBody(), ActiveRepositoriesPayload.class);
         log.info("Processing payload at timestamp {} with {} repositories", payload.timestamp(), payload.repositories().size());
 
+        if (payload.repositories().isEmpty()) {
+            log.warn("No repositories in payload, skipping processing");
+            return;
+        }
+
         var allRepoStats = new ArrayList<RepoStats>(payload.repositories().size());
 
-        var futures = new ArrayList<CompletableFuture<Void>>();
+        var futures = new ArrayList<CompletableFuture<Void>>(payload.repositories().size());
+        log.info("Starting to create HTTP requests for {} repositories", payload.repositories().size());
+        
+        var position = 1;
         for (var repository : payload.repositories()) {
+            log.debug("Creating request {}/{} for repository: {}", position, payload.repositories().size(), repository.name());
             var languagesUri = URI.create(String.format("https://api.github.com/repos/%s/languages", repository.name()));
             var request = HttpRequest.newBuilder()
                     .uri(languagesUri)
                     .header("Accept", "application/json")
-                    .version(HttpClient.Version.HTTP_1_1)
+                    .header("User-Agent", "sourceplot-repo-analyzer/1.0")
+                    .timeout(Duration.ofSeconds(10))
                     .build();
 
-            var future = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+            CompletableFuture<Void> future = httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenAccept(response -> {
+                    log.debug("Received response for repository: {}, status: {}", repository.name(), response.statusCode());
                     try {
+                        if (response.statusCode() == 403) {
+                            log.warn("Rate limited by GitHub API for repository {}: {} - {}", repository.name(), response.statusCode(), response.body());
+                            return;
+                        } else if (response.statusCode() != 200) {
+                            log.warn("Non-200 response for repository {}: {} - {}", repository.name(), response.statusCode(), response.body());
+                            return;
+                        }
+
                         var bytesByLanguage = languageDataParser.parse(response.body());
                         var repoStats = RepoStats.builder()
                             .repo(repository.name())
@@ -127,27 +153,44 @@ public class RepoAnalysisHandler implements RequestHandler<SQSEvent, SQSBatchRes
                             .bytesByLanguage(bytesByLanguage)
                             .build();
 
-                        allRepoStats.add(repoStats);
+                        synchronized (allRepoStats) {
+                            allRepoStats.add(repoStats);
+                        }
+                        log.debug("Successfully processed language data for repository: {}", repository.name());
                     }
                     catch (JsonProcessingException e) {
-                        log.error("Error parsing language data", e);
+                        log.error("Error parsing language data for repository: " + repository.name(), e);
                     }
                     catch (Exception e) {
-                        log.error("Error handling language data response", e);
+                        log.error("Error handling language data response for repository: " + repository.name(), e);
                     }
+                })
+                .exceptionally(throwable -> {
+                    log.error("HTTP request failed for repository: " + repository.name(), throwable);
+                    return null;
                 });
 
             futures.add(future);
+            log.debug("Added future for repository: {}", repository.name());
+            position++;
         }
 
-        log.info("Waiting for all {} language data requests to complete", futures.size());
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
+        log.info("Created {} futures, waiting for all {} language data requests to complete", futures.size(), futures.size());
 
-        log.info("All repositories processed, now saving repo stats objects in batch");
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
+            log.info("All HTTP requests completed successfully");
+        } catch (Exception e) {
+            log.error("Error waiting for HTTP requests to complete", e);
+            throw e;
+        }
+
+        log.info("All repositories processed (collected {} repo stats), now saving repo stats objects in batch", allRepoStats.size());
         repoStatsAccessor.batchSaveRepoStats(allRepoStats);
         log.info("Successfully saved all repo stats items");
 
         var end = System.currentTimeMillis();
         metrics.addMetric("MessageProcessingTime", end - start, MetricUnit.MILLISECONDS);
+        metrics.addMetric("SuccessfulRepoStats", allRepoStats.size(), MetricUnit.COUNT);
     }
 }

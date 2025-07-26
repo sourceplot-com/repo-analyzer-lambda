@@ -4,8 +4,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.sourceplot.model.RepoStats;
-import com.sourceplot.init.annotations.AggregateStatsTableName;
-import com.sourceplot.init.annotations.RepoStatsTableName;
+import com.sourceplot.init.EnvironmentModule.EnvironmentConfig;
 import com.sourceplot.model.AggregateStats;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
@@ -35,17 +34,17 @@ public class AwsModule extends AbstractModule {
     @Singleton
     public DynamoDbTable<RepoStats> provideRepoStatsTable(
         DynamoDbEnhancedClient enhancedClient,
-        @RepoStatsTableName String tableName
+        EnvironmentConfig environmentConfig
     ) {
-        return enhancedClient.table(tableName, TableSchema.fromBean(RepoStats.class));
+        return enhancedClient.table(environmentConfig.repoStatsTableName(), TableSchema.fromBean(RepoStats.class));
     }
     
     @Provides
     @Singleton
     public DynamoDbTable<AggregateStats> provideAggregateStatsTable(
         DynamoDbEnhancedClient enhancedClient,
-        @AggregateStatsTableName String tableName
+        EnvironmentConfig environmentConfig
     ) {
-        return enhancedClient.table(tableName, TableSchema.fromBean(AggregateStats.class));
+        return enhancedClient.table(environmentConfig.aggregateStatsTableName(), TableSchema.fromBean(AggregateStats.class));
     }
 }

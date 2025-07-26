@@ -6,7 +6,7 @@
     </Appenders>
 
     <Loggers>
-        <Logger name="com.sourceplog" level="DEBUG" additivity="false">
+        <Logger name="com.sourceplot" level="DEBUG" additivity="false">
             <AppenderRef ref="JsonAppender"/>
         </Logger>
         <Root level="info">

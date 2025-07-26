@@ -1,31 +1,39 @@
 package com.sourceplot.init;
 
+import org.immutables.value.Value;
+
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.sourceplot.init.annotations.AggregateStatsTableName;
-import com.sourceplot.init.annotations.RepoStatsTableDateIndex;
-import com.sourceplot.init.annotations.RepoStatsTableName;
+import com.google.inject.Singleton;
 
 public class EnvironmentModule extends AbstractModule {
     @Override
     protected void configure() {
     }
 
-    @Provides
-    @RepoStatsTableName
-    public String provideRepoStatsTableName() {
-        return System.getenv("REPO_STATS_TABLE");
+    @Value.Immutable
+    @Value.Style(init = "with*", get = { "get*", "is*" })
+    public interface EnvironmentConfig {
+        String repoStatsTableName();
+        String repoStatsTableDateIndex();
+        String aggregateStatsTableName();
+        int activeRepositoriesPerMessage();
+        int repositoriesToProcessPerLambda();
+        int messagesToProcessPerLambda();
+        int messagesToProcessConcurrently();
     }
 
     @Provides
-    @RepoStatsTableDateIndex
-    public String provideDateIndex() {
-        return System.getenv("REPO_STATS_TABLE_DATE_INDEX");
-    }
-
-    @Provides
-    @AggregateStatsTableName
-    public String provideAggregateStatsTableName() {
-        return System.getenv("AGGREGATE_STATS_TABLE");
+    @Singleton
+    public EnvironmentConfig provideEnvironmentConfig() {
+        return ImmutableEnvironmentConfig.builder()
+            .withRepoStatsTableName(System.getenv("REPO_STATS_TABLE"))
+            .withRepoStatsTableDateIndex(System.getenv("REPO_STATS_TABLE_DATE_INDEX"))
+            .withAggregateStatsTableName(System.getenv("AGGREGATE_STATS_TABLE"))
+            .withActiveRepositoriesPerMessage(Integer.parseInt(System.getenv("ACTIVE_REPOSITORIES_PER_MESSAGE")))
+            .withRepositoriesToProcessPerLambda(Integer.parseInt(System.getenv("REPOSITORIES_TO_PROCESS_PER_LAMBDA")))
+            .withMessagesToProcessPerLambda(Integer.parseInt(System.getenv("MESSAGES_TO_PROCESS_PER_LAMBDA")))
+            .withMessagesToProcessConcurrently(Integer.parseInt(System.getenv("MESSAGES_TO_PROCESS_CONCURRENTLY")))
+            .build();
     }
 }
