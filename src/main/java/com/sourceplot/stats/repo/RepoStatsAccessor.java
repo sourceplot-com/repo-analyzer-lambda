@@ -1,9 +1,9 @@
-package com.sourceplot.accessor;
+package com.sourceplot.stats.repo;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.sourceplot.init.annotations.RepoStatsTableDateIndex;
-import com.sourceplot.model.RepoStats;
+import com.sourceplot.init.EnvironmentModule.EnvironmentConfig;
+
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
@@ -22,26 +22,26 @@ public class RepoStatsAccessor {
     public static final DateTimeFormatter DATE_HOUR_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd-HH");
     
     private final DynamoDbEnhancedClient enhancedClient;
-    private final DynamoDbTable<RepoStats> repoStatsTable;
+    private final DynamoDbTable<RepoStatsItem> repoStatsTable;
     private final String dateIndexName;
     
     @Inject
     public RepoStatsAccessor(
         DynamoDbEnhancedClient enhancedClient,
-        DynamoDbTable<RepoStats> repoStatsTable,
-        @RepoStatsTableDateIndex String dateIndexName
+        DynamoDbTable<RepoStatsItem> repoStatsTable,
+        EnvironmentConfig environmentConfig
     ) {
         this.repoStatsTable = repoStatsTable;
         this.enhancedClient = enhancedClient;
-        this.dateIndexName = dateIndexName;
+        this.dateIndexName = environmentConfig.repoStatsTableDateIndex();
     }
     
-    public void saveRepoStats(RepoStats repoStats) {
+    public void saveRepoStats(RepoStatsItem repoStats) {
         repoStatsTable.putItem(repoStats);
         log.info("Successfully saved repo stats for {}", repoStats.getRepo());
     }
     
-    public Optional<RepoStats> getRepoStats(String repoName, String dateHour) {
+    public Optional<RepoStatsItem> getRepoStats(String repoName, String dateHour) {
         log.info("Retrieving repo stats for repo: {} on datehour: {}", repoName, dateHour);
         
         return Optional.ofNullable(
@@ -53,11 +53,11 @@ public class RepoStatsAccessor {
         );
     }
     
-    public Optional<RepoStats> getRepoStats(String repoName, LocalDate date) {
+    public Optional<RepoStatsItem> getRepoStats(String repoName, LocalDate date) {
         return getRepoStats(repoName, date.format(DATE_HOUR_FORMATTER));
     }
     
-    public void batchSaveRepoStats(List<RepoStats> repoStatsList) {
+    public void batchSaveRepoStats(List<RepoStatsItem> repoStatsList) {
         if (repoStatsList.isEmpty()) {
             log.debug("No repo stats to batch save");
             return;
@@ -79,8 +79,8 @@ public class RepoStatsAccessor {
         );
     }
 
-    private WriteBatch writeBatchWithLimit(List<RepoStats> repoStatsList) {
-        var builder = WriteBatch.builder(RepoStats.class)
+    private WriteBatch writeBatchWithLimit(List<RepoStatsItem> repoStatsList) {
+        var builder = WriteBatch.builder(RepoStatsItem.class)
             .mappedTableResource(repoStatsTable);
 
         for (var repoStats : repoStatsList) {

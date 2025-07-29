@@ -3,9 +3,10 @@ package com.sourceplot.init;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.sourceplot.model.RepoStats;
 import com.sourceplot.init.EnvironmentModule.EnvironmentConfig;
-import com.sourceplot.model.AggregateStats;
+import com.sourceplot.stats.aggregate.AggregateStatsItem;
+import com.sourceplot.stats.repo.RepoStatsItem;
+
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
 import software.amazon.awssdk.enhanced.dynamodb.TableSchema;
@@ -16,35 +17,33 @@ public class AwsModule extends AbstractModule {
     protected void configure() {
     }
     
-    @Provides
-    @Singleton
-    public DynamoDbClient provideDynamoDbClient() {
+    private DynamoDbClient getDynamoDbClient() {
         return DynamoDbClient.builder().build();
     }
     
     @Provides
     @Singleton
-    public DynamoDbEnhancedClient provideDynamoDbEnhancedClient(DynamoDbClient dynamoDbClient) {
+    public DynamoDbEnhancedClient provideDynamoDbEnhancedClient() {
         return DynamoDbEnhancedClient.builder()
-            .dynamoDbClient(dynamoDbClient)
+            .dynamoDbClient(getDynamoDbClient())
             .build();
     }
     
     @Provides
     @Singleton
-    public DynamoDbTable<RepoStats> provideRepoStatsTable(
+    public DynamoDbTable<RepoStatsItem> provideRepoStatsTable(
         DynamoDbEnhancedClient enhancedClient,
         EnvironmentConfig environmentConfig
     ) {
-        return enhancedClient.table(environmentConfig.repoStatsTableName(), TableSchema.fromBean(RepoStats.class));
+        return enhancedClient.table(environmentConfig.repoStatsTableName(), TableSchema.fromBean(RepoStatsItem.class));
     }
     
     @Provides
     @Singleton
-    public DynamoDbTable<AggregateStats> provideAggregateStatsTable(
+    public DynamoDbTable<AggregateStatsItem> provideAggregateStatsTable(
         DynamoDbEnhancedClient enhancedClient,
         EnvironmentConfig environmentConfig
     ) {
-        return enhancedClient.table(environmentConfig.aggregateStatsTableName(), TableSchema.fromBean(AggregateStats.class));
+        return enhancedClient.table(environmentConfig.aggregateStatsTableName(), TableSchema.fromBean(AggregateStatsItem.class));
     }
 }

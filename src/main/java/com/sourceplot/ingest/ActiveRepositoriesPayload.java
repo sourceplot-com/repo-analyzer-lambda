@@ -1,9 +1,10 @@
-package com.sourceplot.model;
+package com.sourceplot.ingest;
 
 import java.util.List;
 
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.annotation.JsonSerialize;
+
 import org.immutables.value.Value;
 
 @Value.Immutable

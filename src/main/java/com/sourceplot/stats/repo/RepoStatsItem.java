@@ -1,4 +1,4 @@
-package com.sourceplot.model;
+package com.sourceplot.stats.repo;
 
 import java.util.Map;
 
@@ -18,7 +18,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbSecon
 @NoArgsConstructor
 @AllArgsConstructor
 @DynamoDbBean
-public class RepoStats {
+public class RepoStatsItem {
     private String repo;
     private String dateHour;
     private Map<String, Integer> bytesByLanguage;

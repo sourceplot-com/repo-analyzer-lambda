@@ -1,4 +1,4 @@
-package com.sourceplot.model;
+package com.sourceplot.stats.aggregate;
 
 import lombok.Data;
 import lombok.Builder;
@@ -13,7 +13,7 @@ import software.amazon.awssdk.enhanced.dynamodb.mapper.annotations.DynamoDbAttri
 @NoArgsConstructor
 @AllArgsConstructor
 @DynamoDbBean
-public class AggregateStats {
+public class AggregateStatsItem {
     private String date;
     
     @DynamoDbPartitionKey

@@ -1,8 +1,8 @@
-package com.sourceplot.accessor;
+package com.sourceplot.stats.aggregate;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
-import com.sourceplot.model.AggregateStats;
+
 import lombok.extern.slf4j.Slf4j;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbEnhancedClient;
 import software.amazon.awssdk.enhanced.dynamodb.DynamoDbTable;
@@ -18,25 +18,25 @@ public class AggregateStatsAccessor {
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd");
     
     private final DynamoDbEnhancedClient enhancedClient;
-    private final DynamoDbTable<AggregateStats> aggregateStatsTable;
+    private final DynamoDbTable<AggregateStatsItem> aggregateStatsTable;
     
     @Inject
     public AggregateStatsAccessor(
         DynamoDbEnhancedClient enhancedClient,
-        DynamoDbTable<AggregateStats> aggregateStatsTable
+        DynamoDbTable<AggregateStatsItem> aggregateStatsTable
     ) {
         this.enhancedClient = enhancedClient;
         this.aggregateStatsTable = aggregateStatsTable;
     }
     
-    public void saveAggregateStats(AggregateStats aggregateStats) {
+    public void saveAggregateStats(AggregateStatsItem aggregateStats) {
         log.info("Saving aggregate stats for date: {}", aggregateStats.getDate());
         
         aggregateStatsTable.putItem(aggregateStats);
         log.info("Successfully saved aggregate stats for date: {}", aggregateStats.getDate());
     }
     
-    public Optional<AggregateStats> getAggregateStats(String date) {
+    public Optional<AggregateStatsItem> getAggregateStats(String date) {
         log.info("Retrieving aggregate stats for date: {}", date);
         
         return Optional.ofNullable(
@@ -46,7 +46,7 @@ public class AggregateStatsAccessor {
         ));
     }
     
-    public Optional<AggregateStats> getAggregateStats(LocalDate date) {
+    public Optional<AggregateStatsItem> getAggregateStats(LocalDate date) {
         return getAggregateStats(date.format(DATE_FORMATTER));
     }
 }
